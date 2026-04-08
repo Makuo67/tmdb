@@ -1,4 +1,4 @@
-
+from src.utils.search_movies import load_csv
 import pandas as pd
 import os
 
@@ -25,32 +25,9 @@ print(franchise_success().head())
 ```
 """
 
-filepath = 'data/processed_movies.csv'
-
-
-def load_csv(filepath):
-    """
-    Standard CSV loader identical to kpi.py.
-
-    Parameters:
-    -----------
-    filepath : str
-        Path to processed CSV
-
-    Returns:
-    --------
-    pd.DataFrame
-        Loaded dataset
-    """
-    if not os.path.exists(filepath):
-        raise FileNotFoundError(f"CSV file not found: {filepath}")
-
-    try:
-        df = pd.read_csv(filepath)
-    except Exception as e:
-        print(f"Unexpected error while loading CSV: {e}")
-
-    return df
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+filepath = os.path.join(BASE_DIR, "data", "processed_movies.csv")
+df = load_csv(filepath)
 
 
 df = load_csv(filepath)

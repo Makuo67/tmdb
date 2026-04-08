@@ -1,3 +1,4 @@
+from src.utils.search_movies import load_csv
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -28,26 +29,9 @@ fig = plot_revenue_vs_budget()
 ```
 """
 
-filepath = 'processed_movies.csv'
-
-
-def load_csv(filepath):
-    """
-    CSV loader for plotting context.
-    """
-    if not os.path.exists(filepath):
-        raise FileNotFoundError(f"CSV file not found: {filepath}")
-
-    try:
-        df = pd.read_csv(filepath)
-    except Exception as e:
-        print(f"Unexpected error while loading CSV: {e}")
-
-    return df
-
-
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+filepath = os.path.join(BASE_DIR, "data", "processed_movies.csv")
 df = load_csv(filepath)
-
 
 # Convert date column to datetime
 df["release_date"] = pd.to_datetime(df["release_date"], errors="coerce")
@@ -84,8 +68,8 @@ def plot_revenue_vs_budget():
     fig, ax = plt.subplots()
     ax.scatter(df["budget"], df["revenue"], alpha=0.7)
     ax.set_title("Revenue vs Budget")
-    ax.set_xlabel("Budget ($)")
-    ax.set_ylabel("Revenue ($)")
+    ax.set_xlabel("Budget (million $)")
+    ax.set_ylabel("Revenue (million $)")
     return fig
 
 # ROI Distribution by Genre

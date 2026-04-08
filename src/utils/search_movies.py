@@ -23,7 +23,8 @@ print(search_genre("Science Fiction", "Bruce Willis"))
 ```
 """
 
-filepath = 'tmdb/processed_movies.csv'
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+filepath = os.path.join(BASE_DIR, "data", "processed_movies.csv")
 
 
 def load_csv(filepath):
@@ -60,10 +61,6 @@ def search_genre(genre, cast):
     pd.DataFrame
         Action + genre + cast movies, sorted by vote_average DESC
 
-    Example:
-    --------
-    >>> search_genre("Science Fiction", "Bruce Willis")
-    # Fifth Element, Looper, etc.
     """
     return df[
         df["genres"].str.contains(genre) &
@@ -100,11 +97,8 @@ def search_cast_and_director(cast, director):
 
 
 if __name__ == "__main__":
-    """
-    Demo searches.
-    """
     print("Best-rated Science Fiction Action Movie: ",
           search_genre("Science Fiction", "Bruce Willis"))
-    print()
-    print("Movies starring Uma Thurman & directed by Quentin Tarantino: ",
-          search_cast_and_director("Uma Thurman", "Quentin Tarantino"))
+    # print()
+    # print("Movies starring Uma Thurman & directed by Quentin Tarantino: ",
+    #       search_cast_and_director("Uma Thurman", "Quentin Tarantino"))

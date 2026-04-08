@@ -1,4 +1,5 @@
 import pandas as pd
+from src.utils.search_movies import load_csv
 import os
 
 """
@@ -25,37 +26,9 @@ print(highest_roi(df, top=5))  # Top 5 ROI movies (budget ≥$10M)
 ```
 """
 
-filepath = 'processed_movies.csv'
-
-
-def load_csv(filepath):
-    """
-    Production CSV loader with existence and error handling.
-
-    Parameters:
-    -----------
-    filepath : str
-        Path to processed_movies.csv
-
-    Returns:
-    --------
-    pd.DataFrame
-        Loaded dataset
-
-    Raises:
-    -------
-    FileNotFoundError
-        If CSV missing (run pre_process.py first)
-    """
-    if not os.path.exists(filepath):
-        raise FileNotFoundError(f"CSV file not found: {filepath}")
-
-    try:
-        df = pd.read_csv(filepath)
-    except Exception as e:
-        print(f"Unexpected error while loading CSV: {e}")
-
-    return df
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+filepath = os.path.join(BASE_DIR, "data", "processed_movies.csv")
+df = load_csv(filepath)
 
 
 def profit(revenue, budget):
