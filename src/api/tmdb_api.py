@@ -22,8 +22,8 @@ DEFAULT_MOVIE_IDS: List[int] = [
 ]
 
 BASE_URL = "https://api.themoviedb.org/3/movie/"
-TIMEOUT = 5
-MAX_WORKERS = 8
+TIMEOUT = 15
+MAX_WORKERS = 10
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -38,6 +38,10 @@ class Movie(BaseModel):
     title: str
     release_date: Optional[str]
     vote_average: Optional[float]
+    credits: Optional[Dict[str, Any]]
+
+    class Config:
+        extra = "allow"
 
 # ----------------------------
 # SESSION WITH RETRIES
@@ -71,20 +75,42 @@ def get_movie(
     session: requests.Session
 ) -> Optional[Dict[str, Any]]:
 
-    url = f"{BASE_URL}{movie_id}"
-    params = {
-        "api_key": api_key,
-        "append_to_response": "credits"
-    }
-
-    try:
-        response = session.get(url, params=params, timeout=TIMEOUT)
-        response.raise_for_status()
-        return response.json()
-
-    except requests.RequestException as e:
-        logger.warning(f"Request failed for movie {movie_id}: {e}")
+    def fetch(url, params):
+        for attempt in range(5):
+            try:
+                response = session.get(url, params=params, timeout=TIMEOUT)
+                response.raise_for_status()
+                return response.json()
+            except Exception as e:
+                logger.warning(
+                    f"[{movie_id}] Attempt {attempt+1}/5 failed: {e}"
+                )
         return None
+
+    # Fetch movie + credits in one call
+    url = f"{BASE_URL}{movie_id}"
+    params = {"api_key": api_key, "append_to_response": "credits"}
+    movie = fetch(url, params)
+
+    if movie is None:
+        logger.error(f"[{movie_id}] Skipping: could not fetch movie")
+        return None
+
+    # Ensure credits exist; retry separately if not included
+    if "credits" not in movie or not isinstance(movie["credits"], dict):
+        logger.warning(
+            f"[{movie_id}] Missing credits. Retrying credits endpoint...")
+        credits_url = f"{BASE_URL}{movie_id}/credits"
+        credits = fetch(credits_url, {"api_key": api_key})
+
+        if credits is None:
+            logger.error(
+                f"[{movie_id}] Skipping: credits missing after retries")
+            return None
+
+        movie["credits"] = credits
+
+    return movie
 
 # ----------------------------
 # VALIDATION

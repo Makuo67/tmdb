@@ -1,10 +1,6 @@
-from tmdb.src.api.tmdb_api import load_data, DEFAULT_MOVIE_IDS
-from typing import Optional
+from src.api.tmdb_api import load_data
 import pandas as pd
 import numpy as np
-from dotenv import load_dotenv
-import os
-load_dotenv()
 
 """
 pre_process.py - Production ETL Pipeline for TMDB Data
@@ -25,16 +21,10 @@ Output Schema: 23 production columns for analytics/visualization.
 Dependencies:
 - pandas, numpy, python-dotenv
 - tmdb_api.py
-
-Example:
-```python
-from pre_process import full_pipeline
-df_clean = full_pipeline(save_path='movies.csv')
-```
 """
 
 
-def load_and_clean(api_key: Optional[str] = None, movie_ids: Optional[list[int]] = None) -> pd.DataFrame:
+def load_and_clean() -> pd.DataFrame:
     """
     Initial ETL stage: Load raw API data and flatten credits JSON.
 
@@ -55,7 +45,7 @@ def load_and_clean(api_key: Optional[str] = None, movie_ids: Optional[list[int]]
     - Drops invalid IDs (null/0)
     - Normalizes credits → separate columns (cast/crew lists)
     """
-    df = load_data(api_key=api_key, movie_ids=movie_ids)
+    df = load_data()
 
     df = df[df['id'].notna() & (df['id'] != 0)].reset_index(drop=True)
     cols_to_drop = ['adult', 'imdb_id', 'original_title', 'video', 'homepage']
@@ -102,7 +92,7 @@ def extract_nested_list(series: pd.Series, key: str = 'name') -> pd.Series:
     return series.apply(_extract)
 
 
-def full_pipeline(api_key: Optional[str] = None, movie_ids: Optional[list[int]] = None, save_path: str = '~/Amalitech-foundation/tmdb/processed_movies.csv') -> pd.DataFrame:
+def full_pipeline(save_path="data/processed_movies.csv") -> pd.DataFrame:
     """
     PRODUCTION ETL PIPELINE: Raw → Clean → Feature Engineering → CSV Export
 
@@ -142,7 +132,7 @@ def full_pipeline(api_key: Optional[str] = None, movie_ids: Optional[list[int]] 
     # Ready for analysis
     >>> df[df['title']=='Avengers: Endgame']['roi'].iloc[0]
     """
-    df = load_and_clean(api_key, movie_ids)
+    df = load_and_clean()
 
     # Extract nested fields → pipe-delimited
     df['collection_name'] = extract_nested_list(
@@ -164,7 +154,7 @@ def full_pipeline(api_key: Optional[str] = None, movie_ids: Optional[list[int]] 
         [c.get("name", "") for c in x]) if isinstance(x, list) else np.nan)
 
     def get_director(crew_list):
-        \"\"\"Extract primary director from crew JSON.\"\"\"
+        """Extract primary director from crew JSON."""
         if isinstance(crew_list, list):
             for member in crew_list:
                 if member.get("job") == "Director":
@@ -173,10 +163,12 @@ def full_pipeline(api_key: Optional[str] = None, movie_ids: Optional[list[int]] 
 
     df['director'] = df['crew'].apply(get_director)
 
-    df['crew_size'] = df['crew'].apply(lambda x: len(x) if isinstance(x, list) else 0)
+    df['crew_size'] = df['crew'].apply(
+        lambda x: len(x) if isinstance(x, list) else 0)
 
     # Drop raw JSON columns
-    json_cols = ['belongs_to_collection', 'genres', 'production_countries', 'production_companies', 'spoken_languages']
+    json_cols = ['belongs_to_collection', 'genres',
+                 'production_countries', 'production_companies', 'spoken_languages']
     df = df.drop(columns=json_cols, errors='ignore')
 
     # Fill categorical NaNs consistently
@@ -188,7 +180,8 @@ def full_pipeline(api_key: Optional[str] = None, movie_ids: Optional[list[int]] 
     df['revenue'] = df['revenue'].replace(0, np.nan)
 
     # Type coercion pipeline
-    numeric_cols = ['budget', 'id', 'popularity', 'revenue', 'runtime', 'vote_count', 'vote_average', 'cast_size', 'crew_size']
+    numeric_cols = ['budget', 'id', 'popularity', 'revenue', 'runtime',
+                    'vote_count', 'vote_average', 'cast_size', 'crew_size']
     for col in numeric_cols:
         df[col] = pd.to_numeric(df[col], errors='coerce')
 
@@ -206,7 +199,8 @@ def full_pipeline(api_key: Optional[str] = None, movie_ids: Optional[list[int]] 
     df.loc[df['vote_count'] == 0, 'vote_average'] = np.nan
 
     # Text cleaning (overview/tagline)
-    placeholders = ['No Data', 'none', 'None', '', 'null', 'Null', 'Undefined', 'undefined']
+    placeholders = ['No Data', 'none', 'None', '',
+                    'null', 'Null', 'Undefined', 'undefined']
     df['overview'] = df['overview'].replace(placeholders, np.nan)
     df['tagline'] = df['tagline'].replace(placeholders, np.nan)
 
@@ -226,13 +220,15 @@ def full_pipeline(api_key: Optional[str] = None, movie_ids: Optional[list[int]] 
     final_columns = ['id', 'title', 'tagline', 'release_date', 'genres', 'belongs_to_collection', 'original_language',
                      'budget', 'revenue', 'production_companies', 'production_countries', 'vote_count', 'vote_average',
                      'popularity', 'runtime', 'overview', 'spoken_languages', 'poster_path', 'cast', 'cast_size', 'director', 'crew_size']
-    df_final = df_final[[col for col in final_columns if col in df_final.columns]]
+    df_final = df_final[[
+        col for col in final_columns if col in df_final.columns]]
     df_final = df_final.reset_index(drop=True)
 
     # Production export
     df_final.to_csv(save_path, index=False)
     print(f"Processed data saved to {save_path}")
     print("Columns:", df_final.columns.tolist())
+
 
 if __name__ == "__main__":
     print(full_pipeline())
